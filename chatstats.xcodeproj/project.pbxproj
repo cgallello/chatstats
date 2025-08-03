@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		83CB5CBB2E2C9CA20064128C /* Contacts.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83CB5CBA2E2C9CA20064128C /* Contacts.framework */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		83CB5C952E2B4F4B0064128C /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +31,7 @@
 		83CB5C842E2B4F4A0064128C /* chatstats.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = chatstats.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		83CB5C942E2B4F4B0064128C /* chatstatsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = chatstatsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		83CB5C9E2E2B4F4B0064128C /* chatstatsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = chatstatsUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		83CB5CBA2E2C9CA20064128C /* Contacts.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Contacts.framework; path = System/Library/Frameworks/Contacts.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -52,6 +57,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				83CB5CBB2E2C9CA20064128C /* Contacts.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +84,7 @@
 				83CB5C862E2B4F4A0064128C /* chatstats */,
 				83CB5C972E2B4F4B0064128C /* chatstatsTests */,
 				83CB5CA12E2B4F4B0064128C /* chatstatsUITests */,
+				83CB5CB92E2C9CA20064128C /* Frameworks */,
 				83CB5C852E2B4F4A0064128C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,6 +97,14 @@
 				83CB5C9E2E2B4F4B0064128C /* chatstatsUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		83CB5CB92E2C9CA20064128C /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				83CB5CBA2E2C9CA20064128C /* Contacts.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -395,6 +410,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = chatstats/chatstats.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -402,6 +418,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSContactsUsageDescription = "   This app needs access to your contacts to display sender names in your messages.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -423,6 +440,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = chatstats/chatstats.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -430,6 +448,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSContactsUsageDescription = "   This app needs access to your contacts to display sender names in your messages.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

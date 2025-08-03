@@ -13,6 +13,8 @@ struct chatstatsApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
+            Message.self,
+            Contact.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -30,3 +32,4 @@ struct chatstatsApp: App {
         .modelContainer(sharedModelContainer)
     }
 }
+

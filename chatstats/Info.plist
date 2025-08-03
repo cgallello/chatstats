@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>This app needs access to import your iMessage data for analysis.</string>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>This app needs access to your desktop folder to import iMessage data.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>This app needs access to your documents folder to import iMessage data.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>This app needs access to your downloads folder to import iMessage data.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>This app needs access to your contacts to display proper names instead of phone numbers in your imported messages.</string>
+</dict>
+</plist> 
