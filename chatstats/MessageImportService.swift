@@ -245,13 +245,13 @@ class MessageImportService: ObservableObject {
         
         var messageCount = 0
         var skippedCount = 0
-        let totalMessages = 500 // We're limiting to 500 messages
+        let totalMessages = 50000 // Match the SQL LIMIT for accurate progress tracking
         
         while sqlite3_step(statement) == SQLITE_ROW {
             messageCount += 1
             
-            // Update progress every 50 messages
-            if messageCount % 50 == 0 {
+            // Update progress every 1000 messages for better performance
+            if messageCount % 1000 == 0 {
                 let progress = 0.1 + (Double(messageCount) / Double(totalMessages)) * 0.8
                 await MainActor.run {
                     importProgress = progress
