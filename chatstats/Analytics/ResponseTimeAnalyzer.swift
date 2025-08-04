@@ -47,7 +47,9 @@ class ResponseTimeAnalyzer {
             if !times.isEmpty && sender != "Me" && sender != "Unknown" {
                 let sortedTimes = times.sorted()
                 let average = times.reduce(0, +) / Double(times.count)
-                let median = sortedTimes[sortedTimes.count / 2]
+                let median = sortedTimes.count % 2 == 0 
+                    ? (sortedTimes[sortedTimes.count / 2 - 1] + sortedTimes[sortedTimes.count / 2]) / 2
+                    : sortedTimes[sortedTimes.count / 2]
                 let p95Index = Int(Double(sortedTimes.count) * 0.95)
                 let p95 = sortedTimes[min(p95Index, sortedTimes.count - 1)]
                 let fastest = sortedTimes.first ?? 0

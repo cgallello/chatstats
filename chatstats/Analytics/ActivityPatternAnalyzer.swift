@@ -46,8 +46,22 @@ class ActivityPatternAnalyzer {
         let totalMessages = myMessages.count
         
         var rangeMessages = 0
-        for hour in timeRange.startHour...timeRange.endHour {
-            rangeMessages += hourlyDistribution[hour] ?? 0
+        
+        // Handle ranges that span midnight (like night: 22-5)
+        if timeRange.startHour > timeRange.endHour {
+            // Count from startHour to 23
+            for hour in timeRange.startHour...23 {
+                rangeMessages += hourlyDistribution[hour] ?? 0
+            }
+            // Count from 0 to endHour
+            for hour in 0...timeRange.endHour {
+                rangeMessages += hourlyDistribution[hour] ?? 0
+            }
+        } else {
+            // Normal range that doesn't span midnight
+            for hour in timeRange.startHour...timeRange.endHour {
+                rangeMessages += hourlyDistribution[hour] ?? 0
+            }
         }
         
         return totalMessages > 0 ? (Double(rangeMessages) / Double(totalMessages)) * 100 : 0

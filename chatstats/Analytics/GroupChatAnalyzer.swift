@@ -55,12 +55,13 @@ class GroupChatAnalyzer {
                 let chatGroupId = chatMessages.first?.chatGroupId
                 
                 let otherParticipants = participants.filter { $0 != "Me" }
-                let groupChatName = if let displayName = chatDisplayName, !displayName.isEmpty {
-                    displayName
+                let groupChatName: String
+                if let displayName = chatDisplayName, !displayName.isEmpty {
+                    groupChatName = displayName
                 } else if otherParticipants.count <= 2 {
-                    otherParticipants.joined(separator: ", ")
+                    groupChatName = otherParticipants.joined(separator: ", ")
                 } else {
-                    "\(otherParticipants.prefix(2).joined(separator: ", ")) + \(otherParticipants.count - 2) more"
+                    groupChatName = "\(otherParticipants.prefix(2).joined(separator: ", ")) + \(otherParticipants.count - 2) more"
                 }
                 
                 let engagementScore = computeEngagementScore(
