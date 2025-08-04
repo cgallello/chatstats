@@ -312,6 +312,10 @@ struct ContentView: View {
     }
     
     
+    private func getSortedMessages() -> [Message] {
+        return messages.sorted { $0.date > $1.date }
+    }
+    
     private func clearCache() async {
         do {
             try modelContext.delete(model: Message.self)

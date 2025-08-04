@@ -1,0 +1,18 @@
+repos:
+  - repo: local
+    hooks:
+      - id: swift-build
+        name: Swift Build Check
+        entry: xcodebuild -project chatstats.xcodeproj -scheme chatstats build
+        language: system
+        types: [swift]
+        pass_filenames: false
+        always_run: true
+        
+      - id: swift-test
+        name: Swift Test Check
+        entry: xcodebuild -project chatstats.xcodeproj -scheme chatstats test
+        language: system
+        types: [swift]
+        pass_filenames: false
+        always_run: true
