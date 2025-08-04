@@ -534,131 +534,20 @@ struct ContentView: View {
         }
         
         var emojis: [String] = []
-        var currentEmoji = ""
         
-        for scalar in text.unicodeScalars {
-            if scalar.properties.isEmoji {
-                currentEmoji += String(scalar)
-            } else {
-                if !currentEmoji.isEmpty {
-                    // Only add if it's not purely numeric and is a valid emoji
-                    if !isNumeric(currentEmoji) && isValidEmoji(currentEmoji) {
-                        // Split the emoji sequence into individual emojis
-                        let individualEmojis = splitEmojiSequence(currentEmoji)
-                        emojis.append(contentsOf: individualEmojis)
-                    }
-                    currentEmoji = ""
-                }
+        // Use Swift 5's proper Character enumeration for emoji detection
+        for character in text {
+            if character.isEmoji {
+                emojis.append(String(character))
             }
-        }
-        
-        // Handle the last emoji
-        if !currentEmoji.isEmpty && !isNumeric(currentEmoji) && isValidEmoji(currentEmoji) {
-            let individualEmojis = splitEmojiSequence(currentEmoji)
-            emojis.append(contentsOf: individualEmojis)
         }
         
         return emojis
     }
     
-    private func splitEmojiSequence(_ emojiSequence: String) -> [String] {
-        var individualEmojis: [String] = []
-        
-        // Use enumerateSubstrings to properly split emoji characters
-        emojiSequence.enumerateSubstrings(in: emojiSequence.startIndex..<emojiSequence.endIndex,
-                                         options: [.byComposedCharacterSequences, .localized]) { substring, _, _, _ in
-            if let emoji = substring, !emoji.isEmpty {
-                // Filter out non-emoji characters and system characters
-                if emoji.unicodeScalars.contains(where: { $0.properties.isEmoji }) && isValidEmoji(emoji) {
-                    individualEmojis.append(emoji)
-                }
-            }
-        }
-        
-        return individualEmojis
-    }
     
     private func isNumeric(_ string: String) -> Bool {
         return !string.isEmpty && string.allSatisfy { $0.isNumber }
-    }
-    
-    private func isValidEmoji(_ string: String) -> Bool {
-        // Filter out common system characters that aren't real emojis
-        let systemCharacters: Set<String> = [
-            "●", "○", "◉", "◯", "⚫", "⚪", // Circles and dots
-            "■", "□", "▪", "▫", "◼", "◻", // Squares  
-            "▲", "△", "▼", "▽", "◀", "▶", // Triangles and arrows
-            "♠", "♣", "♥", "♦", // Card suits (often system chars)
-            "￼", // Object replacement character
-            "⭐", "✨", // Some stars can be system
-            "☆", "★", // Star variations
-        ]
-        
-        // Filter out if it's a known system character
-        if systemCharacters.contains(string) {
-            return false
-        }
-        
-        // Filter out single character geometric shapes and symbols that are likely system chars
-        if string.count == 1 {
-            let scalar = string.unicodeScalars.first!
-            let value = scalar.value
-            
-            // Filter out geometric shapes (U+25A0–U+25FF)
-            if value >= 0x25A0 && value <= 0x25FF {
-                return false
-            }
-            
-            // Filter out miscellaneous symbols (U+2600–U+26FF) except common emojis
-            if value >= 0x2600 && value <= 0x26FF {
-                // Allow common weather and symbols that are real emojis
-                let allowedRanges: [ClosedRange<UInt32>] = [
-                    0x2600...0x2604, // Sun, cloud variants
-                    0x260E...0x2611, // Phone, ballot box, etc.  
-                    0x2614...0x2615, // Umbrella, coffee
-                    0x2618...0x2618, // Shamrock
-                    0x261D...0x261D, // Pointing finger
-                    0x2620...0x2620, // Skull and crossbones
-                    0x2622...0x2623, // Radioactive, biohazard
-                    0x2626...0x2626, // Orthodox cross
-                    0x262A...0x262A, // Star and crescent
-                    0x262E...0x262F, // Peace, yin yang
-                    0x2638...0x2639, // Wheel of dharma, frowning face
-                    0x263A...0x263A, // Smiling face
-                    0x2640...0x2642, // Gender symbols
-                    0x2648...0x2653, // Zodiac signs
-                    0x265F...0x2660, // Chess, spades
-                    0x2663...0x2665, // Clubs, hearts, diamonds
-                    0x2668...0x2668, // Hot springs
-                    0x267B...0x267B, // Recycling
-                    0x267E...0x267F, // Infinity, wheelchair
-                    0x2692...0x2697, // Hammer, alembic, etc.
-                    0x2699...0x269C, // Gear, fleur-de-lis, etc.
-                    0x26A0...0x26A1, // Warning, lightning
-                    0x26A7...0x26A7, // Male with stroke
-                    0x26AA...0x26AB, // Circles (but these might be system)
-                    0x26B0...0x26B1, // Coffin, funeral urn
-                    0x26BD...0x26BE, // Soccer, baseball
-                    0x26C4...0x26C5, // Snowman, sun behind cloud
-                    0x26C8...0x26C8, // Thunder cloud and rain
-                    0x26CE...0x26CF, // Ophiuchus, pick
-                    0x26D1...0x26D1, // Helmet with cross
-                    0x26D3...0x26D4, // Chains, no entry
-                    0x26E9...0x26EA, // Shinto shrine, church
-                    0x26F0...0x26F5, // Mountain, sailboat
-                    0x26F7...0x26FA, // Skier, tent
-                    0x26FD...0x26FD, // Fuel pump
-                ]
-                
-                let isAllowed = allowedRanges.contains { $0.contains(value) }
-                if !isAllowed {
-                    return false
-                }
-            }
-        }
-        
-        // If it passes all filters, it's likely a real emoji
-        return true
     }
     
     private func getTopGroupChats() -> [GroupChat] {
@@ -1057,6 +946,39 @@ struct BidirectionalResponseRow: View {
         .padding(12)
         .background(Color.cyan.opacity(0.05))
         .cornerRadius(8)
+    }
+}
+
+// MARK: - Character Extension for Emoji Detection
+
+extension Character {
+    /// A more reliable emoji detection using Swift 5's Unicode properties
+    /// Based on recommended approaches from Swift forums and StackOverflow
+    var isEmoji: Bool {
+        // Check if the character contains emoji scalars
+        guard let firstScalar = unicodeScalars.first else { return false }
+        
+        // Use isEmojiPresentation for more precise detection, fallback to isEmoji
+        let hasEmojiPresentation = firstScalar.properties.isEmojiPresentation
+        let hasEmojiProperty = firstScalar.properties.isEmoji
+        
+        // Handle simple emoji (single scalar with emoji presentation)
+        if hasEmojiPresentation {
+            return true
+        }
+        
+        // Handle complex emoji sequences (multiple scalars)
+        if unicodeScalars.count > 1 && hasEmojiProperty {
+            return true
+        }
+        
+        // Handle simple emoji that have emoji property but not default presentation
+        // Exclude common false positives like digits and basic symbols
+        if hasEmojiProperty && firstScalar.value > 0x238C {
+            return true
+        }
+        
+        return false
     }
 }
 
