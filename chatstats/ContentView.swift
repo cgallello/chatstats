@@ -159,62 +159,33 @@ struct ContentView: View {
                                 .cornerRadius(12)
                             }
                             
-                            // Response Time Metrics
-                            HStack(spacing: 16) {
-                                // Fastest Responder
-                                if let fastestResponder = getFastestResponder() {
-                                    VStack(alignment: .leading) {
-                                        Text("Fastest Responder")
-                                            .font(.headline)
-                                            .foregroundColor(.primary)
-                                        HStack {
-                                            Image(systemName: "bolt.circle.fill")
-                                                .font(.system(size: 32))
-                                                .foregroundColor(.green)
-                                            
-                                            VStack(alignment: .leading, spacing: 4) {
-                                                Text(fastestResponder.name)
-                                                    .font(.title2)
-                                                    .fontWeight(.medium)
-                                                Text("Avg: \(fastestResponder.time)")
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-                                            }
-                                        }
-                                    }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding()
-                                    .background(Color.green.opacity(0.1))
-                                    .cornerRadius(12)
-                                }
+                            // Bidirectional Response Time Section
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Response Time Analysis")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
                                 
-                                // Slowest Responder
-                                if let slowestResponder = getSlowestResponder() {
-                                    VStack(alignment: .leading) {
-                                        Text("Slowest Responder")
-                                            .font(.headline)
-                                            .foregroundColor(.primary)
-                                        HStack {
-                                            Image(systemName: "tortoise.circle.fill")
-                                                .font(.system(size: 32))
-                                                .foregroundColor(.orange)
-                                        
-                                            VStack(alignment: .leading, spacing: 4) {
-                                                Text(slowestResponder.name)
-                                                    .font(.title2)
-                                                    .fontWeight(.medium)
-                                                Text("Avg: \(slowestResponder.time)")
-                                                    .font(.caption)
-                                                    .foregroundColor(.secondary)
-                                            }
+                                let bidirectionalStats = SelfResponseAnalytics.calculateBidirectionalResponseTimes(for: messages)
+                                
+                                if bidirectionalStats.isEmpty {
+                                    Text("No response time data available")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                        .padding()
+                                        .frame(maxWidth: .infinity)
+                                        .background(Color.gray.opacity(0.1))
+                                        .cornerRadius(8)
+                                } else {
+                                    VStack(spacing: 8) {
+                                        ForEach(Array(bidirectionalStats.prefix(5).enumerated()), id: \.offset) { index, stats in
+                                            BidirectionalResponseRow(stats: stats, rank: index + 1)
                                         }
                                     }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding()
-                                    .background(Color.orange.opacity(0.1))
-                                    .cornerRadius(12)
                                 }
                             }
+                            .padding()
+                            .background(Color.cyan.opacity(0.05))
+                            .cornerRadius(12)
                             
                             // Top Group Chats Section
                             VStack(alignment: .leading, spacing: 12) {
@@ -921,6 +892,92 @@ struct MessageRow: View {
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+struct BidirectionalResponseRow: View {
+    let stats: BidirectionalResponseTimes
+    let rank: Int
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                // Rank badge
+                Text("\(rank)")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                    .frame(width: 20, height: 20)
+                    .background(Color.cyan)
+                    .clipShape(Circle())
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(stats.contactName)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+                    
+                    if let comparison = stats.whoIsFaster {
+                        Text(comparison)
+                            .font(.caption2)
+                            .foregroundColor(comparison.contains("faster") ? 
+                                           (comparison.contains("You're") ? .green : .orange) : .secondary)
+                    }
+                }
+                
+                Spacer()
+            }
+            
+            // Response time comparison
+            HStack(spacing: 16) {
+                // Their response to you
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("They respond to you")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.blue)
+                    
+                    if let theirStats = stats.theirResponseToYou {
+                        Text("Avg: \(SelfResponseAnalytics.formatResponseTime(theirStats.averageSeconds))")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        Text("P95: \(SelfResponseAnalytics.formatResponseTime(theirStats.p95Seconds))")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("No data")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                // Your response to them
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("You respond to them")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.green)
+                    
+                    if let yourStats = stats.yourResponseToThem {
+                        Text("Avg: \(SelfResponseAnalytics.formatResponseTime(yourStats.averageSeconds))")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                        Text("P95: \(SelfResponseAnalytics.formatResponseTime(yourStats.p95Seconds))")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("No data")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Spacer()
+            }
+        }
+        .padding(12)
+        .background(Color.cyan.opacity(0.05))
+        .cornerRadius(8)
     }
 }
 
