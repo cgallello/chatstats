@@ -159,6 +159,125 @@ struct ContentView: View {
                                 .cornerRadius(12)
                             }
                             
+                            // Daily Streak Section
+                            VStack(spacing: 12) {
+                                HStack {
+                                    Text("Daily Streaks")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                }
+                                
+                                HStack(spacing: 16) {
+                                    // Current Best Streak
+                                    if let longestCurrent = getLongestCurrentStreak() {
+                                        VStack(alignment: .leading) {
+                                            Text("Current Best")
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                                .foregroundColor(.primary)
+                                            HStack {
+                                                Text(StreakAnalytics.getStreakEmoji(for: longestCurrent.currentStreak, isBroken: longestCurrent.streakBroken))
+                                                    .font(.system(size: 24))
+                                                
+                                                VStack(alignment: .leading, spacing: 2) {
+                                                    Text(StreakAnalytics.formatStreak(longestCurrent.currentStreak))
+                                                        .font(.title2)
+                                                        .fontWeight(.bold)
+                                                        .foregroundColor(longestCurrent.streakBroken ? .red : .green)
+                                                    Text(longestCurrent.conversationName)
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                        .lineLimit(1)
+                                                }
+                                            }
+                                        }
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding()
+                                        .background(longestCurrent.streakBroken ? Color.red.opacity(0.1) : Color.green.opacity(0.1))
+                                        .cornerRadius(12)
+                                    }
+                                    
+                                    // All-Time Record
+                                    if let record = getAllTimeRecord() {
+                                        VStack(alignment: .leading) {
+                                            Text("All-Time Record")
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                                .foregroundColor(.primary)
+                                            HStack {
+                                                Text("🏆")
+                                                    .font(.system(size: 24))
+                                                
+                                                VStack(alignment: .leading, spacing: 2) {
+                                                    Text(StreakAnalytics.formatStreak(record.longestStreak))
+                                                        .font(.title2)
+                                                        .fontWeight(.bold)
+                                                        .foregroundColor(.orange)
+                                                    Text(record.conversationName)
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                        .lineLimit(1)
+                                                }
+                                            }
+                                        }
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding()
+                                        .background(Color.orange.opacity(0.1))
+                                        .cornerRadius(12)
+                                    }
+                                }
+                                
+                                // Active Streaks List
+                                let activeStreaks = getTopActiveStreaks(limit: 3)
+                                if !activeStreaks.isEmpty {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text("Active Streaks")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.primary)
+                                        
+                                        ForEach(activeStreaks.indices, id: \.self) { index in
+                                            let streak = activeStreaks[index]
+                                            HStack {
+                                                Text(StreakAnalytics.getStreakEmoji(for: streak.currentStreak, isBroken: false))
+                                                    .font(.system(size: 20))
+                                                
+                                                VStack(alignment: .leading, spacing: 2) {
+                                                    Text(streak.conversationName)
+                                                        .font(.subheadline)
+                                                        .fontWeight(.medium)
+                                                        .lineLimit(1)
+                                                    Text(StreakAnalytics.formatStreak(streak.currentStreak))
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                }
+                                                
+                                                Spacer()
+                                                
+                                                if streak.currentStreak > 0 {
+                                                    Text("Active")
+                                                        .font(.caption)
+                                                        .fontWeight(.medium)
+                                                        .foregroundColor(.green)
+                                                        .padding(.horizontal, 8)
+                                                        .padding(.vertical, 4)
+                                                        .background(Color.green.opacity(0.2))
+                                                        .cornerRadius(8)
+                                                }
+                                            }
+                                            .padding(.vertical, 4)
+                                        }
+                                    }
+                                    .padding()
+                                    .background(Color.blue.opacity(0.05))
+                                    .cornerRadius(12)
+                                }
+                            }
+                            .padding()
+                            .background(Color.purple.opacity(0.05))
+                            .cornerRadius(12)
+                            
                             // Response Time Metrics
                             HStack(spacing: 16) {
                                 // Fastest Responder
@@ -681,6 +800,25 @@ struct ContentView: View {
         
         // Sort by total message count and return top 10
         return Array(groupChats.sorted { $0.totalMessages > $1.totalMessages }.prefix(10))
+    }
+    
+    private func getStreakStats() -> [StreakStats] {
+        return StreakAnalytics.calculateStreaks(for: messages)
+    }
+    
+    private func getTopActiveStreaks(limit: Int = 3) -> [StreakStats] {
+        let allStreaks = getStreakStats()
+        return StreakAnalytics.getActiveStreaks(from: allStreaks).prefix(limit).map { $0 }
+    }
+    
+    private func getLongestCurrentStreak() -> StreakStats? {
+        let allStreaks = getStreakStats()
+        return allStreaks.max { $0.currentStreak < $1.currentStreak }
+    }
+    
+    private func getAllTimeRecord() -> StreakStats? {
+        let allStreaks = getStreakStats()
+        return StreakAnalytics.getLongestAllTimeStreak(from: allStreaks)
     }
     
     private func clearCache() async {
