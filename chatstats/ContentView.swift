@@ -60,9 +60,31 @@ struct ContentView: View {
                     if !importService.importStatus.isEmpty {
                         VStack(spacing: 10) {
                             if importService.isImporting {
-                                ProgressView(value: importService.importProgress)
-                                    .progressViewStyle(LinearProgressViewStyle())
-                                    .frame(width: 200)
+                                VStack(spacing: 8) {
+                                    ProgressView(value: importService.importProgress)
+                                        .progressViewStyle(LinearProgressViewStyle())
+                                        .frame(width: 250)
+                                    
+                                    if importService.totalMessagesFound > 0 {
+                                        HStack {
+                                            Text("\(importService.messagesProcessed) / \(importService.totalMessagesFound)")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                            Spacer()
+                                            Text("\(Int(importService.importProgress * 100))%")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .frame(width: 250)
+                                    }
+                                    
+                                    Button("Cancel Import") {
+                                        importService.cancelImport()
+                                    }
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                                    .padding(.top, 4)
+                                }
                             }
                             
                             Text(importService.importStatus)

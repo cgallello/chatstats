@@ -15,6 +15,11 @@ class MessageImportService: ObservableObject {
     @Published var isImporting = false
     @Published var importProgress: Double = 0.0
     @Published var importStatus = ""
+    @Published var totalMessagesFound: Int = 0
+    @Published var messagesProcessed: Int = 0
+    
+    private var importTask: Task<Void, Never>?
+    private var isCancelled = false
     
     private var modelContext: ModelContext?
     private let contactResolver = ContactResolver()
@@ -60,12 +65,31 @@ class MessageImportService: ObservableObject {
     }
     
     func importMessages() async {
+        // Cancel any existing import task
+        cancelImport()
+        
         await MainActor.run {
             isImporting = true
             importProgress = 0.0
             importStatus = "Requesting file access..."
+            isCancelled = false
         }
         
+        // Create new import task
+        importTask = Task {
+            await performImport()
+        }
+        
+        await importTask?.value
+    }
+    
+    func cancelImport() {
+        isCancelled = true
+        importTask?.cancel()
+        importTask = nil
+    }
+    
+    private func performImport() async {
         // Request full disk access
         let granted = await requestFullDiskAccess()
         if !granted {
@@ -75,6 +99,8 @@ class MessageImportService: ObservableObject {
             }
             return
         }
+        
+        if isCancelled { return }
         
         await MainActor.run {
             importStatus = "Locating iMessage database..."
@@ -89,9 +115,11 @@ class MessageImportService: ObservableObject {
             return
         }
         
+        if isCancelled { return }
+        
         await MainActor.run {
-            importStatus = "Importing messages..."
-            importProgress = 0.1
+            importStatus = "Preparing to import messages..."
+            importProgress = 0.05
         }
         
         // Import messages from the database on background thread
@@ -100,7 +128,9 @@ class MessageImportService: ObservableObject {
         }.value
         
         await MainActor.run {
-            if success {
+            if isCancelled {
+                importStatus = "Import cancelled by user."
+            } else if success {
                 importStatus = "Import completed successfully!"
                 importProgress = 1.0
             } else {
@@ -175,38 +205,116 @@ class MessageImportService: ObservableObject {
             sqlite3_close(db)
         }
         
-        // Debug: Check chat table schema
-        let schemaQuery = "PRAGMA table_info(chat)"
-        var schemaStatement: OpaquePointer?
-        if sqlite3_prepare_v2(db, schemaQuery, -1, &schemaStatement, nil) == SQLITE_OK {
-            print("[DEBUG] Chat table schema:")
-            while sqlite3_step(schemaStatement) == SQLITE_ROW {
-                let columnName = String(cString: sqlite3_column_text(schemaStatement, 1))
-                let columnType = String(cString: sqlite3_column_text(schemaStatement, 2))
-                print("[DEBUG] Column: \(columnName) (\(columnType))")
-            }
-            sqlite3_finalize(schemaStatement)
-        }
-        
-        // Debug: Check some chat display names
-        let chatQuery = "SELECT chat_identifier, display_name FROM chat WHERE display_name IS NOT NULL LIMIT 10"
-        var chatStatement: OpaquePointer?
-        if sqlite3_prepare_v2(db, chatQuery, -1, &chatStatement, nil) == SQLITE_OK {
-            print("[DEBUG] Sample chat display names:")
-            while sqlite3_step(chatStatement) == SQLITE_ROW {
-                let chatId = sqlite3_column_text(chatStatement, 0)
-                let displayName = sqlite3_column_text(chatStatement, 1)
-                if let chatId = chatId, let displayName = displayName {
-                    print("[DEBUG] Chat: \(String(cString: chatId)) -> \(String(cString: displayName))")
-                }
-            }
-            sqlite3_finalize(chatStatement)
-        }
-        
         guard let modelContext = modelContext else {
             return false
         }
         
+        // Clear existing messages first
+        do {
+            try modelContext.delete(model: Message.self)
+            try modelContext.save()
+        } catch {
+            return false
+        }
+        
+        // First, get total count for progress tracking
+        let totalCount = await getTotalMessageCount(db: db)
+        await MainActor.run {
+            totalMessagesFound = totalCount
+            messagesProcessed = 0
+            importStatus = "Found \(totalCount) messages to import..."
+        }
+        
+        // Import messages in batches using streaming approach
+        return await importMessagesStreaming(db: db, batchSize: 1000)
+    }
+    
+    private func getTotalMessageCount(db: OpaquePointer) async -> Int {
+        let countQuery = """
+            SELECT COUNT(*)
+            FROM message m
+            LEFT JOIN chat_message_join cmj ON m.ROWID = cmj.message_id
+            LEFT JOIN chat c ON cmj.chat_id = c.ROWID
+            WHERE m.text IS NOT NULL AND m.text != ''
+        """
+        
+        var statement: OpaquePointer?
+        var count = 0
+        
+        if sqlite3_prepare_v2(db, countQuery, -1, &statement, nil) == SQLITE_OK {
+            if sqlite3_step(statement) == SQLITE_ROW {
+                count = Int(sqlite3_column_int(statement, 0))
+            }
+            sqlite3_finalize(statement)
+        }
+        
+        return count
+    }
+    
+    private func importMessagesStreaming(db: OpaquePointer, batchSize: Int = 1000) async -> Bool {
+        guard let modelContext = modelContext else {
+            return false
+        }
+        
+        var offset = 0
+        var totalProcessed = 0
+        
+        while !isCancelled {
+            // Load batch of messages
+            let batch = await loadMessageBatch(db: db, offset: offset, limit: batchSize)
+            
+            if batch.isEmpty {
+                break // No more messages
+            }
+            
+            // Process batch in memory-efficient way
+            for message in batch {
+                if isCancelled {
+                    return false
+                }
+                
+                modelContext.insert(message)
+                totalProcessed += 1
+                
+                // Update progress every 100 messages for better performance
+                if totalProcessed % 100 == 0 {
+                    await MainActor.run {
+                        messagesProcessed = totalProcessed
+                        importProgress = Double(totalProcessed) / Double(totalMessagesFound)
+                        importStatus = "Importing messages... (\(totalProcessed)/\(totalMessagesFound))"
+                    }
+                }
+            }
+            
+            // Save batch to reduce memory usage
+            do {
+                try modelContext.save()
+            } catch {
+                print("Error saving batch: \(error)")
+                return false
+            }
+            
+            offset += batchSize
+            
+            // Yield control to prevent blocking the main thread
+            await Task.yield()
+        }
+        
+        // Final save and progress update
+        do {
+            try modelContext.save()
+            await MainActor.run {
+                messagesProcessed = totalProcessed
+                importProgress = 1.0
+                importStatus = "Successfully imported \(totalProcessed) messages!"
+            }
+            return true
+        } catch {
+            return false
+        }
+    }
+    
+    private func loadMessageBatch(db: OpaquePointer, offset: Int, limit: Int) async -> [Message] {
         let query = """
             SELECT 
                 m.guid,
@@ -216,58 +324,37 @@ class MessageImportService: ObservableObject {
                 m.handle_id,
                 c.chat_identifier,
                 c.display_name,
-                c.chat_identifier,
                 c.group_id
             FROM message m
             LEFT JOIN chat_message_join cmj ON m.ROWID = cmj.message_id
             LEFT JOIN chat c ON cmj.chat_id = c.ROWID
             WHERE m.text IS NOT NULL AND m.text != ''
             ORDER BY m.date DESC
-            LIMIT 50000
+            LIMIT \(limit) OFFSET \(offset)
         """
         
         var statement: OpaquePointer?
+        var messages: [Message] = []
         
         guard sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK else {
-            return false
+            return messages
         }
         
         defer {
             sqlite3_finalize(statement)
         }
         
-        // Clear existing messages
-        do {
-            try modelContext.delete(model: Message.self)
-        } catch {
-            return false
-        }
-        
-        var messageCount = 0
-        var skippedCount = 0
-        let totalMessages = 500 // We're limiting to 500 messages
-        
         while sqlite3_step(statement) == SQLITE_ROW {
-            messageCount += 1
-            
-            // Update progress every 50 messages
-            if messageCount % 50 == 0 {
-                let progress = 0.1 + (Double(messageCount) / Double(totalMessages)) * 0.8
-                await MainActor.run {
-                    importProgress = progress
-                    importStatus = "Importing messages... (\(messageCount)/\(totalMessages))"
-                }
+            if isCancelled {
+                break
             }
             
-            guard let guidCStr = sqlite3_column_text(statement, 0) else { 
-                skippedCount += 1
-                continue 
+            guard let guidCStr = sqlite3_column_text(statement, 0),
+                  let textCStr = sqlite3_column_text(statement, 1) else {
+                continue
             }
+            
             let guid = String(cString: guidCStr)
-            guard let textCStr = sqlite3_column_text(statement, 1) else { 
-                skippedCount += 1
-                continue 
-            }
             let text = String(cString: textCStr)
             let date = sqlite3_column_int64(statement, 2)
             let isFromMe = sqlite3_column_int(statement, 3) == 1
@@ -276,7 +363,7 @@ class MessageImportService: ObservableObject {
             // Get chat information
             let chatIdentifier = sqlite3_column_text(statement, 5)
             let displayName = sqlite3_column_text(statement, 6)
-            let groupId = sqlite3_column_text(statement, 8)
+            let groupId = sqlite3_column_text(statement, 7)
             
             let chatId = chatIdentifier != nil ? String(cString: chatIdentifier!) : "unknown_chat"
             let chatDisplayName = displayName != nil ? String(cString: displayName!) : nil
@@ -291,20 +378,15 @@ class MessageImportService: ObservableObject {
                 date: Date(timeIntervalSinceReferenceDate: TimeInterval(date / 1_000_000_000)),
                 sender: sender,
                 isFromMe: isFromMe,
-                chatId: chatId, // Use actual chat ID instead of sender
-                chatDisplayName: chatDisplayName, // Store the chat display name
-                chatGroupId: chatGroupId // Store the group ID for image lookup
+                chatId: chatId,
+                chatDisplayName: chatDisplayName,
+                chatGroupId: chatGroupId
             )
             
-            modelContext.insert(message)
+            messages.append(message)
         }
         
-        do {
-            try modelContext.save()
-            return true
-        } catch {
-            return false
-        }
+        return messages
     }
     
     private func getSenderInfo(db: OpaquePointer, handleId: Int32, isFromMe: Bool) async -> String {

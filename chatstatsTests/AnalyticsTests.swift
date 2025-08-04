@@ -19,6 +19,7 @@ final class AnalyticsTests: XCTestCase {
     var groupChatAnalyzer: GroupChatAnalyzer!
     var analyticsManager: AnalyticsManager!
     
+    @MainActor
     override func setUp() {
         super.setUp()
         
@@ -43,6 +44,7 @@ final class AnalyticsTests: XCTestCase {
         super.tearDown()
     }
     
+    @MainActor
     func testResponseTimeAnalyzer() {
         let responseStats = responseTimeAnalyzer.computeResponseTimes(for: sampleMessages)
         
@@ -57,6 +59,7 @@ final class AnalyticsTests: XCTestCase {
         }
     }
     
+    @MainActor
     func testEmojiAnalyzer() {
         let emojiUsage = emojiAnalyzer.computeEmojiUsage(for: sampleMessages)
         
@@ -82,6 +85,7 @@ final class AnalyticsTests: XCTestCase {
         XCTAssertLessThanOrEqual(diversity.diversityScore, 1, "Diversity score should be <= 1")
     }
     
+    @MainActor
     func testActivityPatternAnalyzer() {
         let patterns = activityPatternAnalyzer.computeActivityPatterns(for: sampleMessages)
         
@@ -109,6 +113,7 @@ final class AnalyticsTests: XCTestCase {
         XCTAssertEqual(totalPercentage, 100, accuracy: 0.1, "Total percentage should be 100%")
     }
     
+    @MainActor
     func testStreakAnalyzer() {
         let streaks = streakAnalyzer.computeStreaks(for: sampleMessages)
         
@@ -133,6 +138,7 @@ final class AnalyticsTests: XCTestCase {
         XCTAssertFalse(dailyCalendar.isEmpty, "Daily calendar should not be empty")
     }
     
+    @MainActor
     func testGroupChatAnalyzer() {
         let engagement = groupChatAnalyzer.computeGroupChatEngagement(for: sampleMessages)
         
@@ -158,6 +164,7 @@ final class AnalyticsTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(participationAnalysis.myAverageParticipation, 0, "My average participation should be non-negative")
     }
     
+    @MainActor
     func testAnalyticsManager() {
         let responseStats = analyticsManager.computeResponseTimes(for: sampleMessages)
         XCTAssertFalse(responseStats.isEmpty, "Response stats should not be empty")
